@@ -306,6 +306,18 @@ PeFormat::~PeFormat()
 }
 
 /**
+* Init information from PE loader
+*/
+void PeFormat::initLoaderErrorInfo()
+{
+	PeLib::LoaderError ldrError = file->loaderError();
+
+	_ldrErrInfo.loaderErrorCode = static_cast<std::uint32_t>(ldrError);
+	_ldrErrInfo.loaderError = getLoaderErrorString(ldrError, false);
+	_ldrErrInfo.loaderErrorUserFriendly = getLoaderErrorString(ldrError, true);
+}
+
+/**
  * Init internal structures
  */
 void PeFormat::initStructures()
@@ -332,6 +344,10 @@ void PeFormat::initStructures()
 			file->readResourceDirectory();
 			file->readSecurityDirectory();
 			file->readComHeaderDirectory();
+
+			// Fill-in the loader error info from PE file
+			initLoaderErrorInfo();
+
 			mzHeader = file->mzHeader();
 			switch((peClass = getFileType(filePath)))
 			{
@@ -655,7 +671,6 @@ void PeFormat::loadSymbols()
 void PeFormat::loadImports()
 {
 	std::string libname;
-	Import import;
 
 	for(std::size_t i = 0; formatParser->getImportedLibraryFileName(i, libname); ++i)
 	{
@@ -665,9 +680,11 @@ void PeFormat::loadImports()
 		}
 		importTable->addLibrary(libname);
 
-		for(std::size_t j = 0; formatParser->getImport(i, j, import); ++j)
+		std::size_t index = 0;
+		while (auto import = formatParser->getImport(i, index))
 		{
-			importTable->addImport(import);
+			importTable->addImport(std::move(import));
+			index++;
 		}
 	}
 
@@ -679,16 +696,18 @@ void PeFormat::loadImports()
 		}
 		importTable->addLibrary(libname);
 
-		for(std::size_t j = 0; formatParser->getDelayImport(i, j, import); ++j)
+		std::size_t index = 0;
+		while (auto import = formatParser->getDelayImport(i, index))
 		{
-			import.setLibraryIndex(importTable->getNumberOfLibraries() - 1);
-			importTable->addImport(import);
+			import->setLibraryIndex(importTable->getNumberOfLibraries() - 1);
+			importTable->addImport(std::move(import));
+			index++;
 		}
 	}
 
 	loadImpHash();
 
-	for (auto&& addressRange : formatParser->getImportDirectoryOccupiedAddresses())
+	for(auto&& addressRange : formatParser->getImportDirectoryOccupiedAddresses())
 	{
 		nonDecodableRanges.addRange(std::move(addressRange));
 	}
@@ -714,7 +733,9 @@ void PeFormat::loadExports()
 		exportTable->addExport(newExport);
 	}
 
-	for (auto&& addressRange : formatParser->getExportDirectoryOccupiedAddresses())
+	loadExpHash();
+
+	for(auto&& addressRange : formatParser->getExportDirectoryOccupiedAddresses())
 	{
 		nonDecodableRanges.addRange(std::move(addressRange));
 	}
@@ -975,8 +996,6 @@ void PeFormat::loadCertificates()
 		return;
 	}
 
-	signatureVerified = verifySignature(p7);
-
 	// Find signer of the application and store its serial number.
 	X509 *signerCert = nullptr;
 	X509 *counterSignerCert = nullptr;
@@ -1020,6 +1039,12 @@ void PeFormat::loadCertificates()
 		BIO_free(bio);
 		return;
 	}
+
+	// Now that we know there is at least a signer or counter-signer, we can
+	// verify the signature. Do not try to verify the signature before
+	// verifying that there is at least a signer or counter-signer as 'p7' is
+	// empty in that case (#87).
+	signatureVerified = verifySignature(p7);
 
 	// Create hash table with key-value pair as subject-X509 certificate so we can easily lookup certificates by their subject name
 	std::unordered_map<std::string, X509*> subjectToCert;
@@ -1098,7 +1123,6 @@ void PeFormat::loadCertificates()
 	PKCS7_free(p7);
 	BIO_free(bio);
 }
-
 
 /**
  * Load .NET headers.
@@ -1206,6 +1230,10 @@ void PeFormat::loadDotnetHeaders()
  */
 bool PeFormat::verifySignature(PKCS7 *p7)
 {
+	// At first, verify that there are data in place where Microsoft Code Signing should be present
+	if (!p7->d.sign->contents->d.other)
+		return false;
+
 	// We need this because PKCS7_verify() looks up algorithms and without this, tables are empty
 	OpenSSL_add_all_algorithms();
 	SCOPE_EXIT {
@@ -1288,32 +1316,40 @@ std::vector<std::tuple<const std::uint8_t*, std::size_t>> PeFormat::getDigestRan
 
 	// To prevent crashes on unordinary binaries, we need to sort these offsets (together with sizes, but they are unimportant for sorting)
 	// Usually, checksum is first, then security directory header and then security directory
-	// There are few binaries where this ordered is not followed
+	// There are a few binaries where this order is not followed
 	std::vector<std::pair<std::size_t, std::size_t>> offsets = { std::make_pair(checksumFileOffset, 4), std::make_pair(secDirFileOffset, 8), std::make_pair(secDirOffset, secDirSize) };
 	std::sort(offsets.begin(), offsets.end(), [](const auto& lhs, const auto& rhs) {
 			return lhs.first < rhs.first;
 		});
 
 	std::size_t lastOffset = 0;
-	for (auto& offset : offsets)
+	for (auto& offsetSize : offsets)
 	{
-		// This offset is completely covered by the last offset so ignore it
-		if (offset.first + offset.second <= lastOffset)
+		// If the length of the range is bigger than the amount of data we have available, then sanitize the length
+		if (offsetSize.second > bytes.size())
+			offsetSize.second = bytes.size();
+
+		// If the range overlaps the end of the file, then sanitize the length
+		if (offsetSize.first + offsetSize.second > bytes.size())
+			offsetSize.second = bytes.size() - offsetSize.first;
+
+		// This offsetSize is completely covered by the last offset so ignore it
+		if (offsetSize.first + offsetSize.second <= lastOffset)
 			continue;
 
-		// This offset is partially covered by the last offset, so shrink it
-		// Shrunk offset begins where the last offset ended
-		if (offset.first <= lastOffset)
+		// This offsetSize is partially covered by the last offset, so shrink it
+		// Shrunk offsetSize begins where the last offset ended
+		if (offsetSize.first <= lastOffset)
 		{
-			offset.second = lastOffset - offset.first;
-			offset.first = lastOffset;
+			offsetSize.second = lastOffset - offsetSize.first;
+			offsetSize.first = lastOffset;
 		}
 
-		result.emplace_back(bytes.data() + lastOffset, offset.first - lastOffset);
-		lastOffset = offset.first + offset.second;
+		result.emplace_back(bytes.data() + lastOffset, offsetSize.first - lastOffset);
+		lastOffset = offsetSize.first + offsetSize.second;
 	}
 
-	// Finish off the data if the last offset didn't end at the end of of all data
+	// Finish off the data if the last offset didn't end at the end of all data
 	if (lastOffset != bytes.size())
 		result.emplace_back(bytes.data() + lastOffset, bytes.size() - lastOffset);
 

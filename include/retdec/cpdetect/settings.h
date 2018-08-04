@@ -7,6 +7,7 @@
 #ifndef RETDEC_CPDETECT_SETTINGS_H
 #define RETDEC_CPDETECT_SETTINGS_H
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,8 @@ const std::set<std::string> EXTERNAL_DATABASE_SUFFIXES =
 	".yar",
 	".yara"
 };
+
+const std::string YARA_RULES_PATH = "../share/retdec/support/generic/yara_patterns/tools/";
 
 } // namespace cpdetect
 } // namespace retdec

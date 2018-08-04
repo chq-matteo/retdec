@@ -111,7 +111,6 @@ bool isCoff(const std::string &filePath, const std::string &header)
 	return !errorCode && it.isValidMachineCode(static_cast<PELIB_IMAGE_FILE_MACHINE>(coff.getMachine()));
 }
 
-
 /**
  * Check if file is Java class
  * @param filePath Path to input file
@@ -146,7 +145,6 @@ bool isJava(const std::string &filePath)
 	return false;
 }
 
-
 /**
  * Check if file is strange format with Mach-O magic.
  * @param filepath Path to input file
@@ -168,7 +166,6 @@ bool isStrangeFeedface(const std::string &filePath)
 			}
 		}
 
-		// See #1912 for detailed information on this condition
 		if (ints[0] == 0xfeedface && ints[1] == 0x10 && ints[2] == 0x02)
 		{
 			// Maximal valid Mach-O value is 0x0b but 0x10 will be safer and

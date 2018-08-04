@@ -1433,7 +1433,6 @@ Instruction * IdiomsMagicDivMod::magicSignedDiv8(BasicBlock::iterator iter, bool
 		return div;
 }
 
-
 /**
  * Wrapper of magicSignedDiv8 for positive values.
  *
@@ -1476,7 +1475,7 @@ Instruction * IdiomsMagicDivMod::magicSignedDiv8neg(BasicBlock::iterator iter) c
  */
 Instruction * IdiomsMagicDivMod::signedMod1(BasicBlock::iterator iter) const {
 	/*
-	 * Derivation tree (ARM/ELF, idiom based on #943):
+	 * Derivation tree (ARM/ELF):
 	 *
 	 *                                       add
 	 *                                        /\

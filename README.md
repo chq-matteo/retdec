@@ -1,7 +1,8 @@
 # RetDec
 
 [![Travis CI build status](https://travis-ci.org/avast-tl/retdec.svg?branch=master)](https://travis-ci.org/avast-tl/retdec)
-[![AppVeyor build status](https://ci.appveyor.com/api/projects/status/github/avast-tl/retdec?branch=master&svg=true)](https://ci.appveyor.com/project/avast-tl/retdec)
+[![AppVeyor build status](https://ci.appveyor.com/api/projects/status/github/avast-tl/retdec?branch=master&svg=true)](https://ci.appveyor.com/project/avast-tl/retdec?branch=master)
+[![TeamCity build status](https://retdec-tc.avast.com/app/rest/builds/aggregated/strob:(buildType:(project:(id:Retdec)))/statusIcon)](https://retdec-tc.avast.com/project.html?projectId=Retdec&guest=1)
 
 [RetDec](https://retdec.com/) is a retargetable machine-code decompiler based on [LLVM](https://llvm.org/).
 
@@ -25,21 +26,17 @@ Features:
 
 For more information, check out our
 * [Wiki](https://github.com/avast-tl/retdec/wiki) (in progress)
-* [Botconf 2017 talk](https://retdec.com/web/files/publications/retdec-slides-botconf-2017.pdf)
+* Botconf 2017 talk: [slides](https://retdec.com/web/files/publications/retdec-slides-botconf-2017.pdf), [video](https://www.youtube.com/watch?v=HHFvtt5b6yY)
+* REcon Montreal 2018 talk: [slides](https://retdec.com/web/files/publications/retdec-slides-recon-2018.pdf)
 * [Publications](https://retdec.com/publications/)
 
 ## Installation and Use
 
 Currently, we support only Windows (7 or later), Linux, and unofficially macOS.
 
-**Warning: Decompilations of larger binaries (1 MB or more) may require a lot of RAM. When running decompilations, we advise you to limit the maximal virtual memory for processes before decompiling to prevent potential swapping and unresponsiveness. On Linux, you can run e.g. `ulimit -Sv 9863168` in your shell to limit the maximal virtual memory to 8 GB.**
-
 ### Windows
 
-1. Either download and unpack a pre-built package from the following list, or build and install the decompiler by yourself (the process is described below):
-
-    * [32b Windows](https://github.com/avast-tl/retdec/releases/download/v3.0/retdec-v3.0-windows-32b.zip) (v3.0)
-    * [64b Windows](https://github.com/avast-tl/retdec/releases/download/v3.0/retdec-v3.0-windows-64b.zip) (v3.0)
+1. Either download and unpack a [pre-built package](https://github.com/avast-tl/retdec/releases), or build and install the decompiler by yourself (the process is described below):
 
 2. Install [Microsoft Visual C++ Redistributable for Visual Studio 2015](https://www.microsoft.com/en-us/download/details.aspx?id=48145).
 
@@ -80,16 +77,16 @@ Currently, we support only Windows (7 or later), Linux, and unofficially macOS.
 
 2. After you have built the decompiler, you will need to install the following packages:
 
-    * [Bash](https://www.gnu.org/software/bash/) (version >= 4)
+    * [Bash](https://www.gnu.org/software/bash/) (version >= 4; has to be before the default `bash` 3.2 in your `PATH`)
     * [UPX](https://upx.github.io/)
     * [Graphviz](http://www.graphviz.org/)
-    * [GNU getopt](https://www.gnu.org/software/libc/manual/html_node/Getopt.html) -- should be first in `PATH`
+    * [GNU coreutils](https://www.gnu.org/software/coreutils) (ensure that you have `$(brew --prefix coreutils)/libexec/gnubin` in your `PATH`)
+    * [GNU getopt](https://www.gnu.org/software/libc/manual/html_node/Getopt.html) (has to be before the default `getopt` in your `PATH`)
 
 3. Now, you are all set to run the decompiler. To decompile a binary file named `test.exe`, run
 
     ```
-    # /usr/local/bin/bash if installed via Homebrew
-    /path/to/gnu/bash $RETDEC_INSTALL_DIR/bin/retdec-decompiler.sh test.exe
+    $RETDEC_INSTALL_DIR/bin/retdec-decompiler.sh test.exe
     ```
 
    For more information, run `retdec-decompiler.sh` with `--help`.
@@ -121,7 +118,7 @@ This section describes a local build and installation of RetDec. Instructions fo
 On Debian-based distributions (e.g. Ubuntu), the required packages can be installed with `apt-get`:
 
 ```sh
-sudo apt-get install build-essential cmake git perl python3 bash bison flex autoconf automake libtool pkg-config m4 coreutils zlib1g-dev libtinfo-dev wget bc upx doxygen graphviz
+sudo apt-get install build-essential cmake git perl python3 bash bison flex libfl-dev autoconf automake libtool pkg-config m4 coreutils zlib1g-dev libtinfo-dev wget bc upx doxygen graphviz
 ```
 
 On RPM-based distributions (e.g. Fedora), the required packages can be installed with `dnf`:
@@ -156,7 +153,6 @@ Packages should be preferably installed via [Homebrew](https://brew.sh).
 * [Bison](https://www.gnu.org/software/bison/) (version >= 3.0)
 * [Flex](https://www.gnu.org/software/flex/) (version >= 2.6)
 * [autotools](https://en.wikipedia.org/wiki/GNU_Build_System) ([autoconf](https://www.gnu.org/software/autoconf/autoconf.html), [automake](https://www.gnu.org/software/automake/), and [libtool](https://www.gnu.org/software/libtool/))
-* [coreutils](https://www.gnu.org/software/coreutils) (ensure that you have `$(brew --prefix coreutils)/libexec/gnubin` in your `PATH`)
 * [wget](https://www.gnu.org/software/wget/)
 * Optional: [Doxygen](http://www.stack.nl/~dimitri/doxygen/) and [Graphviz](http://www.graphviz.org/) for generating API documentation
 
@@ -194,7 +190,7 @@ Note: Although RetDec now supports a system-wide installation ([#94](https://git
   * `make install`
 
 You have to pass the following parameters to `cmake`:
-* `-DCMAKE_INSTALL_PREFIX=<path>` to set the installation path to `<path>`.
+* `-DCMAKE_INSTALL_PREFIX=<path>` to set the installation path to `<path>`. Quote the path if you are using backslashes on Windows (e.g. `-DCMAKE_INSTALL_PREFIX="C:\retdec"`).
 * (Windows only) `-G<generator>` is `-G"Visual Studio 14 2015"` for 32-bit build using Visual Studio 2015, or `-G"Visual Studio 14 2015 Win64"` for 64-bit build using Visual Studio 2015. Later versions of Visual Studio may be used.
 
 You can pass the following additional parameters to `cmake`:
@@ -210,46 +206,31 @@ Docker support is maintained by community. If something does not work for you or
 
 ### Build Image
 
-Building in Docker does not require installation of required libraries locally. This is a good option for trying out RetDec without setting up the whole build toolchain.
+Building in Docker does not require installation of the required libraries locally. This is a good option for trying out RetDec without setting up the whole build toolchain.
 
-To build the RetDec docker image, run
+To build the RetDec Docker image, run
 ```
 docker build -t retdec .
 ```
 
-This builds the container from the master branch of this repository.
+This builds the image from the master branch of this repository.
 
-To build the container using the local copy of the repository, use the development Dockerfile, `Dockerfile.dev`:
+To build the image using the local copy of the repository, use the development Dockerfile, `Dockerfile.dev`:
 ```
 docker build -t retdec:dev . -f Dockerfile.dev
 ```
 
 ### Run Container
 
-To decompile a binary, create a container to upload the binary to:
+If your `uid` is not 1000, make sure that the directory containing your input binary files is accessible for RetDec:
 ```
-docker create --name retdec_init retdec
+chmod 0777 /path/to/local/directory
 ```
-
-Upload the binary (note the destination directory should be a directory with read/write permissions, such as `/home/retdec/`):
+Now, you can run the decompiler inside a container:
 ```
-docker cp <file> retdec_init:/destination/path/of/binary
+docker run --rm -v /path/to/local/directory:/destination retdec retdec-decompiler.sh /destination/binary
 ```
-
-Commit the copied files into the container image:
-```
-docker commit retdec_init retdec:initialized
-```
-
-Run the decompiler:
-```
-docker run --name retdec retdec:initialized retdec-decompiler.sh /destination/path/of/binary
-```
-
-Copy output back to host:
-```
-docker cp retdec:/destination/path/of/binary.c /path/to/save/file
-```
+Output files will be generated to the same directory (e.g. `/path/to/local/directory`).
 
 ## Repository Overview
 
@@ -308,9 +289,8 @@ This repository contains the following scripts:
 
 ## Related Repositories
 
-* [retdec-idaplugin](https://github.com/avast-tl/retdec-idaplugin) -- embeds RetDec into IDA (Interactive Disassembler) and makes its use much easier.
-* [retdec-regression-tests-framework](https://github.com/avast-tl/retdec-regression-tests-framework) -- provides means to run and create regression tests for RetDec and related tools. This is a must if you plan to contribute to the RetDec project.
-* [retdec-python](https://github.com/s3rvac/retdec-python) -- Python library and tools providing easy access to our online decompilation service through its [REST API](https://retdec.com/api/).
+* [retdec-idaplugin](https://github.com/avast-tl/retdec-idaplugin) -- Embeds RetDec into IDA (Interactive Disassembler) and makes its use much easier.
+* [retdec-regression-tests-framework](https://github.com/avast-tl/retdec-regression-tests-framework) -- Provides means to run and create regression tests for RetDec and related tools. This is a must if you plan to contribute to the RetDec project.
 * [vim-syntax-retdecdsm](https://github.com/s3rvac/vim-syntax-retdecdsm) -- Vim syntax-highlighting file for the output from the RetDec's disassembler (`.dsm` files).
 
 ## License

@@ -11,7 +11,7 @@ if(CMAKE_CXX_COMPILER)
 endif()
 
 # Set the default build type to 'Release'
-if (NOT CMAKE_BUILD_TYPE)
+if(NOT CMAKE_BUILD_TYPE)
 	set(default_build_type "Release")
 	message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
 	set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Choose the type of build." FORCE)
@@ -35,8 +35,8 @@ if(NOT PYTHON_EXECUTABLE)
 endif()
 
 ExternalProject_Add(llvm-project
-	URL https://github.com/avast-tl/llvm/archive/257248365d034351e164aae04060f0d8f4c5b1f1.zip
-	URL_HASH SHA256=0088e715fd92d9670398514791563f1efc727d5a81b5cac8830c7e746ab26c06
+	URL https://github.com/avast-tl/llvm/archive/725d0cee133c6ab9b95c493f05de3b08016f5c3c.zip
+	URL_HASH SHA256=0ec70e790a84df1dcc4e5bb30f9a3ae32eb280aad8a4711158ba227513ddebf4
 	DOWNLOAD_NAME llvm.zip
 	CMAKE_ARGS
 		# Force a release build (we don't need to debug LLVM).
@@ -90,25 +90,6 @@ ExternalProject_Add(llvm-project
 	INSTALL_COMMAND ""
 )
 
-# Forces a configure step for the given external project.
-# The configure step for external projects is needed to (1) detect source-file
-# changes and (2) fix infinite recursion of 'make' after a terminated build.
-macro(force_configure_step target)
-	# This solution is based on
-	# http://comments.gmane.org/gmane.comp.programming.tools.cmake.user/43024
-	ExternalProject_Add_Step(${target} force-configure
-		COMMAND ${CMAKE_COMMAND} -E echo "Force configure of ${target}"
-		DEPENDEES update
-		DEPENDERS configure
-		ALWAYS 1
-	)
-endmacro()
-
-# We need to force the configuration step for LLVM. Otherwise, if we changed
-# LLVM sources, they would not be rebuilt. This also fixes infinite recursion
-# when running make after an interrupted LLVM build.
-force_configure_step(llvm-project)
-
 # Add libraries.
 ExternalProject_Get_Property(llvm-project binary_dir)
 
@@ -155,7 +136,7 @@ if(UNIX)
 	target_link_libraries(llvm INTERFACE debug     ${ZLIB_LIBRARIES} dl)
 	target_link_libraries(llvm INTERFACE optimized ${ZLIB_LIBRARIES} dl)
 
-	if (NOT APPLE)
+	if(NOT APPLE)
 		target_link_libraries(llvm INTERFACE debug     rt tinfo)
 		target_link_libraries(llvm INTERFACE optimized rt tinfo)
 	else()

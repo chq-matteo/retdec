@@ -22,6 +22,7 @@ set(FILEFORMAT_SOURCES
 	types/rich_header/linker_info.cpp
 	types/import_table/import.cpp
 	types/import_table/import_table.cpp
+	types/import_table/pe_import.cpp
 	types/export_table/export.cpp
 	types/export_table/export_table.cpp
 	types/relocation_table/relocation_table.cpp
@@ -49,6 +50,8 @@ set(FILEFORMAT_SOURCES
 	types/dynamic_table/dynamic_entry.cpp
 	types/dynamic_table/dynamic_table.cpp
 	types/strings/string.cpp
+	types/note_section/elf_notes.cpp
+	types/note_section/elf_core.cpp
 	file_format/pe/pe_format_parser/pe_format_parser64.cpp
 	file_format/pe/pe_format_parser/pe_format_parser.cpp
 	file_format/pe/pe_format_parser/pe_format_parser32.cpp
@@ -64,5 +67,5 @@ set(FILEFORMAT_SOURCES
 )
 
 add_library(retdec-fileformat STATIC ${FILEFORMAT_SOURCES})
-target_link_libraries(retdec-fileformat retdec-fileformat-crypto retdec-config retdec-utils pelib elfio llvm)
+target_link_libraries(retdec-fileformat retdec-crypto retdec-config retdec-utils pelib elfio llvm)
 target_include_directories(retdec-fileformat PUBLIC ${PROJECT_SOURCE_DIR}/include/)

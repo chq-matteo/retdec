@@ -37,7 +37,7 @@ const std::string thinMagic = "!<thin>";
  *
  * Size is same for both thin and normal archives.
  */
-constexpr std::size_t arMagicSize = sizeof("!<arch>");
+constexpr std::size_t arMagicSize = 7;
 
 /**
  * What portion of file will be loaded at start for Mach-O archives detection.
@@ -45,7 +45,6 @@ constexpr std::size_t arMagicSize = sizeof("!<arch>");
  * Structure for 64-bit files is larger so we have to use fat_arch_64.
  */
 constexpr std::size_t fatLoadSize = sizeof(fat_header) + sizeof(fat_arch_64);
-
 
 /**
  * Byte order swap of structure if necessary.
@@ -64,7 +63,6 @@ inline void swapStructByteOrderIfNecessary(
 	}
 }
 
-
 /**
  * Check for archive magic string in Mach-O file.
  *
@@ -79,11 +77,11 @@ bool checkArchMagicAtOffset(
 {
 	// Load bytes at given offset.
 	inputStream.seekg(offset);
-	char arStart[arMagicSize] = {};
+	char arStart[arMagicSize + 1] = {};
 	inputStream.read(arStart, arMagicSize);
 
 	// Check if it is archive.
-	return startsWith(arStart, archMagic) || startsWith(arStart, thinMagic);
+	return arStart == archMagic || arStart == thinMagic;
 }
 
 } // anonymous namespace
@@ -103,15 +101,14 @@ bool isArchive(
 {
 	std::ifstream inputFile(path, std::ifstream::binary);
 	if (inputFile) {
-		char start[arMagicSize] = {};
+		char start[arMagicSize + 1] = {};
 		inputFile.read(start, arMagicSize);
 
-		return startsWith(start, archMagic) || startsWith(start, thinMagic);
+		return start == archMagic || start == thinMagic;
 	}
 
 	return false;
 }
-
 
 /**
  * Check if file is a thin archive.
@@ -125,15 +122,14 @@ bool isThinArchive(
 {
 	std::ifstream inputFile(path, std::ifstream::binary);
 	if (inputFile) {
-		char start[arMagicSize] = {};
+		char start[arMagicSize + 1] = {};
 		inputFile.read(start, arMagicSize);
 
-		return startsWith(start, thinMagic);
+		return start == thinMagic;
 	}
 
 	return false;
 }
-
 
 /**
  * Check if file is a normal (not thin) archive.
@@ -147,15 +143,14 @@ bool isNormalArchive(
 {
 	std::ifstream inputFile(path, std::ifstream::binary);
 	if (inputFile) {
-		char start[arMagicSize] = {};
+		char start[arMagicSize + 1] = {};
 		inputFile.read(start, arMagicSize);
 
-		return startsWith(start, archMagic);
+		return start == archMagic;
 	}
 
 	return false;
 }
-
 
 /**
  * Check if file is a Mach-O Universal Binary archive.

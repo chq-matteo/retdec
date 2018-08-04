@@ -34,7 +34,7 @@ bool isSubpattern(const Pattern &a, const Pattern &b)
 		{
 			continue;
 		}
-		aCont.insert(AddressRange(res1, res1 + res2 - 1));
+		aCont.insert(AddressRange(res1, res1 + res2));
 	}
 
 	if(aCont.empty())
@@ -50,7 +50,7 @@ bool isSubpattern(const Pattern &a, const Pattern &b)
 		{
 			continue;
 		}
-		auto bRange = AddressRange(res1, res1 + res2 - 1);
+		auto bRange = AddressRange(res1, res1 + res2);
 		if(std::none_of(aCont.begin(), aCont.end(),
 			[&] (const auto &aRange)
 			{
@@ -763,6 +763,16 @@ std::string FileInformation::getRichHeaderRecordNumberOfUsesStr(std::size_t posi
 }
 
 /**
+ * Get rich header raw bytes as string
+ * @return Raw bytes of rich header as string
+ */
+std::string FileInformation::getRichHeaderRawBytesStr() const
+{
+	auto rawBytes = richHeader.getRawBytes();
+	return std::string{rawBytes.begin(), rawBytes.end()};
+}
+
+/**
  * Find out if there are any records in rich header
  * @return @c true if rich header is not empty, @c false otherwise
  */
@@ -864,6 +874,16 @@ std::string FileInformation::getImphashSha256() const
 }
 
 /**
+ * Get import
+ * @param position Index of selected import (indexed from 0)
+ * @return Name of selected import
+ */
+const retdec::fileformat::Import* FileInformation::getImport(std::size_t position) const
+{
+	return importTable.getImport(position);
+}
+
+/**
  * Get import name
  * @param position Index of selected import (indexed from 0)
  * @return Name of selected import
@@ -921,6 +941,33 @@ bool FileInformation::hasImportTableRecords() const
 std::size_t FileInformation::getNumberOfStoredExports() const
 {
 	return exportTable.getNumberOfExports();
+}
+
+/**
+ * Get exphash as CRC32
+ * @return Exphash as CRC32
+ */
+std::string FileInformation::getExphashCrc32() const
+{
+	return exportTable.getExphashCrc32();
+}
+
+/**
+ * Get exphash as MD5
+ * @return Exphash as MD5
+ */
+std::string FileInformation::getExphashMd5() const
+{
+	return exportTable.getExphashMd5();
+}
+
+/**
+ * Get exphash as SHA256
+ * @return Exphash as SHA256
+ */
+std::string FileInformation::getExphashSha256() const
+{
+	return exportTable.getExphashSha256();
 }
 
 /**
@@ -2028,7 +2075,6 @@ std::size_t FileInformation::getNumberOfStoredSymbolsInTable(std::size_t positio
 	return symbolTables[position].getNumberOfStoredSymbols();
 }
 
-
 /**
  * Get number of symbols stored in symbol table
  * @param position Position of table in internal list of symbol tables (0..x)
@@ -2041,7 +2087,6 @@ std::string FileInformation::getNumberOfDeclaredSymbolsInTableStr(std::size_t po
 {
 	return symbolTables[position].getNumberOfDeclaredSymbolsStr();
 }
-
 
 /**
  * Get name of symbol table
@@ -2612,6 +2657,24 @@ std::string FileInformation::isSignatureVerifiedStr(const std::string& t, const 
 }
 
 /**
+ * Get ELF notes
+ * @return vector with ELF notes
+ */
+const std::vector<ElfNotes>& FileInformation::getElfNotes() const
+{
+	return elfNotes;
+}
+
+/**
+ * Get ELF core info
+ * @return ELF core info
+ */
+const ElfCore& FileInformation::getElfCoreInfo() const
+{
+	return elfCoreInfo;
+}
+
+/**
  * Get number of detected compilers or packers
  * @return Number of detected compilers or packers
  */
@@ -2714,6 +2777,15 @@ const LoadedSegment& FileInformation::getLoadedSegment(std::size_t index) const
 const std::string& FileInformation::getLoaderStatusMessage() const
 {
 	return loaderInfo.getStatusMessage();
+}
+
+/**
+* Gets loader error message.
+* @return The error message of the loader.
+*/
+const retdec::fileformat::LoaderErrorInfo & FileInformation::getLoaderErrorInfo() const
+{
+	return loaderInfo.getLoaderErrorInfo();
 }
 
 /**
@@ -3484,6 +3556,15 @@ void FileInformation::setLoaderStatusMessage(const std::string& statusMessage)
 }
 
 /**
+* Sets loader error message.
+* @param statusMessage The loader error message.
+*/
+void FileInformation::setLoaderErrorInfo(const retdec::fileformat::LoaderErrorInfo & ldrErrInfo)
+{
+	loaderInfo.setLoaderErrorInfo(ldrErrInfo);
+}
+
+/**
  * Sets whether .NET information are used.
  * @param set @c true if used, otherwise @c false.
  */
@@ -3702,6 +3783,25 @@ void FileInformation::addRelocationTable(RelocationTable &table)
 void FileInformation::addDynamicSection(DynamicSection &section)
 {
 	dynamicSections.push_back(section);
+}
+
+/**
+ * Add ELF notes
+ * @param notes Loaded ELF notes
+ */
+void FileInformation::addElfNotes(ElfNotes& notes)
+{
+	elfNotes.push_back(notes);
+}
+
+void FileInformation::addFileMapEntry(const FileMapEntry& entry)
+{
+	elfCoreInfo.addFileMapEntry(entry);
+}
+
+void FileInformation::addAuxVectorEntry(const std::string& name, std::size_t value)
+{
+	elfCoreInfo.addAuxVectorEntry(name, value);
 }
 
 /**

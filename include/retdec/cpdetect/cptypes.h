@@ -10,6 +10,7 @@
 #include <limits>
 #include <vector>
 
+#include "retdec/cpdetect/settings.h"
 #include "retdec/fileformat/fftypes.h"
 
 namespace retdec {
@@ -60,6 +61,7 @@ enum class DetectionMethod
 	STRING_SEARCH_H,     ///< specific strings
 	DYNAMIC_ENTRIES_H,   ///< .dynamic section
 	COMMENT_H,           ///< .comment section
+	NOTE_H,              ///< .note section
 	MANIFEST_H,          ///< manifest resource
 	OTHER_H              ///< other heuristic
 };
@@ -84,7 +86,8 @@ enum class ToolType
 	COMPILER,
 	LINKER,
 	INSTALLER,
-	PACKER
+	PACKER,
+	OTHER
 };
 
 /**
@@ -108,7 +111,9 @@ struct DetectParams
 	bool internal;  ///< use of internal signature database
 	bool external;  ///< use of external signature database
 
-	DetectParams(SearchType searchType_, bool internal_, bool external_);
+	std::size_t epBytesCount;
+
+	DetectParams(SearchType searchType_, bool internal_, bool external_, std::size_t epBytesCount_ = EP_BYTES_SIZE);
 	~DetectParams();
 };
 
@@ -122,11 +127,11 @@ struct DetectResult
 	std::string versionInfo;            ///< information about version
 	std::string additionalInfo;         ///< some additional information
 
-	unsigned long long impCount = 0;    ///< number of significant nibbles of signature
-	unsigned long long agreeCount = 0;  ///< number of significant nibbles of signature agreeing with file content
+	unsigned long long impCount = 0;    ///< total number of significant nibbles
+	unsigned long long agreeCount = 0;  ///< matched number of significant nibbles
 
-	DetectionMethod source = DetectionMethod::UNKNOWN;    ///< source from which result was obtained
-	DetectionStrength strength = DetectionStrength::LOW;  ///< strength of source
+	DetectionMethod source = DetectionMethod::UNKNOWN;    ///< detection type
+	DetectionStrength strength = DetectionStrength::LOW;  ///< detection strength
 
 	DetectResult();
 	~DetectResult();
@@ -157,10 +162,12 @@ struct DetectLanguage
 /**
  * All information about used tools
  *
- * Value std::numeric_limits<unsigned long long>::max() mean unspecified value or error for unsigned integer types.
- * If @a entryPointOffset has value @c false, value of @a epOffset is undefined.
- * If @a entryPointAddress has value @c false, values of @a epAddress and @a imageBase are undefined.
- * If @a entryPointSection has value @c false, values of @a epSection are undefined.
+ * If @a entryPointOffset is @c false, value of @a epOffset is undefined.
+ * If @a entryPointSection is @c false, values of @a epSection are undefined.
+ * If @a entryPointAddress is @c false, values of @a epAddress and @a imageBase are undefined.
+ *
+ * Value std::numeric_limits<unsigned long long>::max() mean unspecified value or error for
+ * unsigned integer types.
  */
 struct ToolInformation
 {
@@ -168,19 +175,16 @@ struct ToolInformation
 	std::vector<DetectResult> detectedTools;        ///< detected tools (compilers, packers...)
 	std::vector<DetectLanguage> detectedLanguages;  ///< detected programming language(s)
 
-	bool entryPointOffset;           ///< @c false if file has no associated EP or EP offset was not found
-	bool entryPointAddress;          ///< @c false if file has no associated EP or EP address was not found
-	bool entryPointSection;          ///< @c false if file has no associated EP or EP section was not found
-	unsigned long long imageBase;    ///< image base address
-	unsigned long long epAddress;    ///< entry point address
+	bool entryPointOffset = false;   ///< @c false if file has no has no or invalid EP offset
 	unsigned long long epOffset;     ///< entry point offset
-	retdec::fileformat::Section epSection;  ///< entry point section
-	std::string epBytes;             ///< hexadecimal representation of entry point bytes
 
-	bool packerDetected = false;      ///< @c true if at least one packer was detected
-	bool linkerDetected = false;      ///< @c true if at least one linker was detected
-	bool compilerDetected = false;    ///< @c true if at least one compiler was detected
-	bool installertDetected = false;  ///< @c true if at least one installer was detected
+	bool entryPointAddress = false;  ///< @c false if file has no has no or invalid EP address
+	unsigned long long epAddress;    ///< entry point address
+	unsigned long long imageBase;    ///< image base address
+
+	bool entryPointSection = false;         ///< @c false if file has no or invalid EP section
+	retdec::fileformat::Section epSection;  ///< entry point section
+	std::string epBytes;                    ///< hexadecimal representation of entry point bytes
 
 	ToolInformation();
 	~ToolInformation();
@@ -200,9 +204,6 @@ struct ToolInformation
 	bool hasReliableResult() const;
 	Packed isPacked() const;
 	/// @}
-
-private:
-	void setToolTypeVariables(ToolType toolType);
 };
 
 /**
@@ -210,8 +211,8 @@ private:
  */
 struct Similarity
 {
-	unsigned long long same;   ///< number of significant nibbles of signature agreeing with file content
-	unsigned long long total;  ///< number of significant nibbles of signature
+	unsigned long long same;   ///< matched number of significant nibbles
+	unsigned long long total;  ///< total number of significant nibbles
 	double ratio;              ///< @a same divided by @a total
 
 	Similarity();
@@ -221,7 +222,6 @@ struct Similarity
 std::string detectionMetodToString(DetectionMethod method);
 std::string toolTypeToString(ToolType toolType);
 std::string packedToString(Packed packed);
-
 
 } // namespace cpdetect
 } // namespace retdec
